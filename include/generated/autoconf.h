@@ -1,7 +1,7 @@
 /*
  * Automatically generated C config: don't edit
  * Linux kernel version: 2.6.35.7
- * Sat Jun 23 20:55:46 2012
+ * Fri Jun 29 22:55:31 2012
  */
 #define AUTOCONF_INCLUDED
 #define CONFIG_ARCH_OMAP 1
@@ -76,6 +76,7 @@
 #define CONFIG_WLAN 1
 #define CONFIG_INET6_XFRM_MODE_ROUTEOPTIMIZATION 1
 #define CONFIG_HAVE_ARM_SCU 1
+#define CONFIG_ATAGS_PROC 1
 #define CONFIG_XFRM_IPCOMP 1
 #define CONFIG_HDQ_MASTER_OMAP 1
 #define CONFIG_CRYPTO_RNG2 1
@@ -381,6 +382,7 @@
 #define CONFIG_CACHE_L2X0 1
 #define CONFIG_VIRT_TO_BUS 1
 #define CONFIG_VFAT_FS 1
+#define CONFIG_KEXEC_MODULE 1
 #define CONFIG_GENERIC_TIME 1
 #define CONFIG_BLK_DEV_SR 1
 #define CONFIG_TIWLAN_MMC_CONTROLLER 5

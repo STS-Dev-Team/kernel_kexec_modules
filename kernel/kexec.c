@@ -34,15 +34,23 @@
 #include <linux/swap.h>
 #include <linux/kmsg_dump.h>
 #include <linux/kernel.h>
+#include <linux/kallsyms.h>
 
 #include <asm/page.h>
 #include <asm/uaccess.h>
 #include <asm/io.h>
 #include <asm/system.h>
 #include <asm/sections.h>
+#include <asm/unistd.h>
+
+#include <trace/kernel.h>
+
+//#define CONFIG_DIRTYKEXEC //TODO: WTF
 
 DEFINE_TRACE(kernel_kernel_kexec);
 DEFINE_TRACE(kernel_crash_kexec);
+
+extern void printascii(char* sz);
 
 /* Per cpu memory for storing cpu states in case of system crash. */
 note_buf_t __percpu *crash_notes;
@@ -61,12 +69,14 @@ struct resource crashk_res = {
 	.flags = IORESOURCE_BUSY | IORESOURCE_MEM
 };
 
+#ifdef CONFIG_KEXEC
 int kexec_should_crash(struct task_struct *p)
 {
 	if (in_interrupt() || !p->pid || is_global_init(p) || panic_on_oops)
 		return 1;
 	return 0;
 }
+#endif
 
 /*
  * When kexec transitions to the new kernel there is a one-to-one
@@ -1066,9 +1076,10 @@ asmlinkage long compat_sys_kexec_load(unsigned long entry,
 }
 #endif
 
+#ifdef CONFIG_KEXEC
 void crash_kexec(struct pt_regs *regs)
 {
-	trace_kernel_crash_kexec(kexec_crash_image, regs);
+//	trace_kernel_crash_kexec(kexec_crash_image, regs);
 
 	/* Take the kexec_mutex here to prevent sys_kexec_load
 	 * running on one cpu from replacing the crash kernel
@@ -1092,6 +1103,71 @@ void crash_kexec(struct pt_regs *regs)
 		mutex_unlock(&kexec_mutex);
 	}
 }
+#endif
+
+
+#ifndef CONFIG_DIRTYKEXEC
+void (*kernel_restart_prepare_ptr)(char *);
+#endif
+
+/**
+ *	kernel_kexec - reboot the system
+ *
+ *	Move into place and start executing a preloaded standalone
+ *	executable.  If nothing was preloaded return an error.
+ */
+asmlinkage long sys_do_kexec(int magic1, int magic2, unsigned int cmd,
+			     void __user *arg)
+{
+	struct kimage *image;
+	image = xchg(&kexec_image, NULL);
+	if (!image)
+		return -1;
+
+	printascii("Kern restart prepare\n");
+#ifndef CONFIG_DIRTYKEXEC
+	kernel_restart_prepare_ptr(NULL);
+#endif
+	printascii("Machine shutdown\n");
+#ifndef CONFIG_DIRTYKEXEC
+	machine_shutdown();
+#endif
+	printascii("Machine kexec\n");
+
+	machine_kexec(image);
+	
+	return -1;
+}
+
+
+static int __init kexec_init(void)
+{
+	unsigned long *sys_call_table_ptr = (void *)kallsyms_lookup_name("sys_call_table");
+
+#ifndef CONFIG_DIRTYKEXEC
+	kernel_restart_prepare_ptr = (void *)kallsyms_lookup_name("kernel_restart_prepare");
+
+	if (!sys_call_table_ptr || !kernel_restart_prepare_ptr) {
+#else
+	if (!sys_call_table_ptr) {
+#endif
+		return -1;
+	}
+
+
+	sys_call_table_ptr[__NR_kexec_load] = (unsigned long)sys_kexec_load;
+	sys_call_table_ptr[__NR_reboot] = (unsigned long)sys_do_kexec;
+
+	return 0;
+}
+
+static void __exit kexec_exit(void)
+{
+}
+
+module_init(kexec_init)
+module_exit(kexec_exit);
+MODULE_LICENSE("GPL");
 
 size_t crash_get_memory_size(void)
 {
@@ -1215,7 +1291,7 @@ static int __init crash_notes_memory_init(void)
 	}
 	return 0;
 }
-module_init(crash_notes_memory_init)
+//module_init(crash_notes_memory_init)
 
 
 /*
@@ -1489,7 +1565,7 @@ static int __init crash_save_vmcoreinfo_init(void)
 	return 0;
 }
 
-module_init(crash_save_vmcoreinfo_init)
+//module_init(crash_save_vmcoreinfo_init)
 
 /*
  * Move into place and start executing a preloaded standalone
@@ -1499,7 +1575,8 @@ int kernel_kexec(void)
 {
 	int error = 0;
 
-	trace_kernel_kernel_kexec(kexec_image);
+//	trace_kernel_kernel_kexec(kexec_image);
+
 
 	if (!mutex_trylock(&kexec_mutex))
 		return -EBUSY;
@@ -1542,9 +1619,13 @@ int kernel_kexec(void)
 	} else
 #endif
 	{
-		kernel_restart_prepare(NULL);
+#ifndef CONFIG_DIRTYKEXEC
+		kernel_restart_prepare_ptr(NULL);
+#endif
 		printk(KERN_EMERG "Starting new kernel\n");
+#ifndef CONFIG_DIRTYKEXEC
 		machine_shutdown();
+#endif
 	}
 
 	machine_kexec(kexec_image);

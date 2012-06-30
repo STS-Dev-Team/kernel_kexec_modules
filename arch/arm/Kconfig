@@ -1556,7 +1556,7 @@ config XIP_PHYS_ADDR
 	  own flash usage.
 
 config KEXEC
-	bool "Kexec system call (EXPERIMENTAL)"
+	tristate "Kexec system call (EXPERIMENTAL)"
 	depends on EXPERIMENTAL
 	help
 	  kexec is a system call that implements the ability to shutdown your
