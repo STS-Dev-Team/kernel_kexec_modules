@@ -899,7 +899,7 @@ void activate_emu_uart(void)
 
 	INIT_DELAYED_WORK(&the_work, my_timer_callback);
 
- 	queue_delayed_work( my_wq, &the_work, msecs_to_jiffies(5000) );
+// 	queue_delayed_work( my_wq, &the_work, msecs_to_jiffies(5000) );
 
 }
 

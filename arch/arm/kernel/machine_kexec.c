@@ -269,6 +269,12 @@ static inline void kexec_l2x0_inv_all(void)
         /* And don't do spin_unlock_irqrestore(&l2x0_lock, flags); */
 }
 
+static inline void kexec_l2x0_flush_all(void)
+{
+	writel_relaxed(kexec_l2x0_way_mask, myL2CacheBase + L2X0_CLEAN_INV_WAY);
+	kexec_cache_wait_way(myL2CacheBase + L2X0_CLEAN_INV_WAY, kexec_l2x0_way_mask);
+	kexec_cache_sync_always();
+}
 
 void soft_restart(unsigned long addr)
 {
@@ -277,14 +283,6 @@ void soft_restart(unsigned long addr)
 	kex_setup_mm_for_reboot = (void *)kallsyms_lookup_name("setup_mm_for_reboot");
 
 
-	/* Disable preemption */
-	preempt_disable();
-
-	printascii("Disable IRQ's\n");
-	/* Disable interrupts first */
-	local_irq_disable();
-	local_fiq_disable();
-
 
 	printascii("L2X0 Access\n");
 //Do this first so the ioremap will be around
@@ -292,8 +290,17 @@ void soft_restart(unsigned long addr)
 
 	printascii("L2X0 Disable\n");
 	/* Disable the L2 if we're the last man standing. */
-	if (num_online_cpus() == 1) {
+	if (num_online_cpus() == 1) 
+	{	
+		kexec_l2x0_flush_all();
 		outer_disable();
+		kexec_l2x0_flush_all();
+
+		kexec_l2x0_inv_all();
+	}
+	else
+	{
+		printascii("***********Multiple CPU's online!!!***************\n");
 	}
 
 	printascii("Switch mm\n");
@@ -357,9 +364,13 @@ static inline void flush_icache_all(void)
 	extern void v6_icache_inval_all(void);
 	v6_icache_inval_all();
 #elif defined(CONFIG_SMP) && __LINUX_ARM_ARCH__ >= 7
-	asm("mcr	p15, 0, %0, c7, c1, 0	@ invalidate I-cache inner shareable\n"
-	    :
-	    : "r" (0));
+
+	asm volatile ("mcr p15, 0, %0, c7, c5, 0" : : "r" (0));
+
+	/* Invalidate entire branch predictor array */
+
+	asm volatile ("mcr p15, 0, %0, c7, c5, 6" : : "r" (0));
+
 #else
 	asm("mcr	p15, 0, %0, c7, c5, 0	@ invalidate I-cache\n"
 	    :
@@ -375,6 +386,14 @@ void machine_kexec(struct kimage *image)
 	char buf[256];
 
 	page_list = image->head & PAGE_MASK;
+
+	/* Disable preemption */
+	preempt_disable();
+
+	printascii("Disable IRQ's\n");
+	/* Disable interrupts first */
+	local_irq_disable();
+	local_fiq_disable();
 
 	/* we need both effective and real address here */
 	reboot_code_buffer_phys =

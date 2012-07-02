@@ -45,7 +45,9 @@ ENTRY(kexec_cpu_reset)
 	mrc	p15, 0, r1, c1, c0, 0		@ ctrl register
 	bic	r1, r1, #0x0001			@ ...............m
 	mcr	p15, 0, r1, c1, c0, 0		@ disable MMU
-	mcr	p15, 0, ip, c8, c7, 0		@ invalidate I and D TLBs
+	mcr	p15, 0, ip, c8, c7, 0		@ invalidate unified tlb
+	mcr p15, 0, ip, c8, c6, 0		@ invalidate D tlb
+	mcr p15, 0, ip, c8, c5, 0		@ invalidate I tlb
 	mov	pc, r0
 ENDPROC(kexec_cpu_reset)
 
@@ -89,7 +91,11 @@ relocate_new_kernel:
 	bic	r1, r1, #0x1			@ ...............m
 	mcr	p15, 0, r1, c1, c0, 0		@ disable MMU
 	isb
-
+	mcr	p15, 0, ip, c8, c7, 0		@ invalidate unified tlb
+	mcr p15, 0, ip, c8, c6, 0		@ invalidate D tlb
+	mcr p15, 0, ip, c8, c5, 0		@ invalidate I tlb
+	dsb
+	isb
 	ldr	r0,kexec_indirection_page
 	ldr	r1,kexec_start_address
 

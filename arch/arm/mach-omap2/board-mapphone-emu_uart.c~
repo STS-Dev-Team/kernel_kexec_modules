@@ -717,7 +717,7 @@ static void printch(char c)
 	omap_writel(c,UART3_BASE+UART_THR);
 }
 
-static void printascii(const char *c)
+void printascii(const char *c)
 {
 	while(*c)
 	{
@@ -728,6 +728,7 @@ static void printascii(const char *c)
 	}
 
 }
+EXPORT_SYMBOL(printascii);
 
 struct delayed_work the_work;
 

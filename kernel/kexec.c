@@ -1124,6 +1124,14 @@ asmlinkage long sys_do_kexec(int magic1, int magic2, unsigned int cmd,
 	if (!image)
 		return -1;
 
+		/* Disable preemption */
+	preempt_disable();
+
+	printascii("Disable IRQ's\n");
+	/* Disable interrupts first */
+	local_irq_disable();
+	local_fiq_disable();
+
 	printascii("Kern restart prepare\n");
 #ifndef CONFIG_DIRTYKEXEC
 	kernel_restart_prepare_ptr(NULL);
