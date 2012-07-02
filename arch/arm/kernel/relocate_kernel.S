@@ -27,6 +27,8 @@ ENTRY(kexec_cpu_proc_fin)
 	bic	r0, r0, #0x1000			@ ...i............
 	bic	r0, r0, #0x0006			@ .............ca.
 	mcr	p15, 0, r0, c1, c0, 0		@ disable caches
+	isb
+	dsb
 	mov	pc, lr
 ENDPROC(kexec_cpu_proc_fin)
 
@@ -43,11 +45,14 @@ ENDPROC(kexec_cpu_proc_fin)
 ENTRY(kexec_cpu_reset)
 
 	mrc	p15, 0, r1, c1, c0, 0		@ ctrl register
-	bic	r1, r1, #0x0001			@ ...............m
+	bic	r1, r1, #0x0007			@ ...............m
 	mcr	p15, 0, r1, c1, c0, 0		@ disable MMU
-	mcr	p15, 0, ip, c8, c7, 0		@ invalidate unified tlb
-	mcr p15, 0, ip, c8, c6, 0		@ invalidate D tlb
-	mcr p15, 0, ip, c8, c5, 0		@ invalidate I tlb
+	mov r1, #0
+	mcr	p15, 0, r1, c8, c7, 0		@ invalidate unified tlb
+	mcr p15, 0, r1, c8, c6, 0		@ invalidate D tlb
+	mcr p15, 0, r1, c8, c5, 0		@ invalidate I tlb
+	isb
+	dsb
 	mov	pc, r0
 ENDPROC(kexec_cpu_reset)
 
@@ -88,12 +93,14 @@ relocate_new_kernel:
 
 	@ reset
 	mrc	p15, 0, r1, c1, c0, 0		@ ctrl register
-	bic	r1, r1, #0x1			@ ...............m
+	bic	r1, r1, #0x7			@ ...............m
 	mcr	p15, 0, r1, c1, c0, 0		@ disable MMU
+	dsb
 	isb
-	mcr	p15, 0, ip, c8, c7, 0		@ invalidate unified tlb
-	mcr p15, 0, ip, c8, c6, 0		@ invalidate D tlb
-	mcr p15, 0, ip, c8, c5, 0		@ invalidate I tlb
+	mov r1, #0
+	mcr	p15, 0, r1, c8, c7, 0		@ invalidate unified tlb
+	mcr p15, 0, r1, c8, c6, 0		@ invalidate D tlb
+	mcr p15, 0, r1, c8, c5, 0		@ invalidate I tlb
 	dsb
 	isb
 	ldr	r0,kexec_indirection_page
@@ -140,6 +147,8 @@ relocate_new_kernel:
 	mov r0,#0
 	ldr r1,kexec_mach_type
 	ldr r2,kexec_boot_atags
+
+#if 0
 
 	movw	r3, #:lower16:0x4a008920
 	movt	r3, #:upper16:0x4a008920
@@ -1323,7 +1332,7 @@ relocate_new_kernel:
 //	mov	r4, #0x10000000
 //	str	r4, [r3, #0x190]
 //	str	r4, [r3, #0x194]
-
+#endif
 	mov pc,lr
 
 	.globl kexec_start_address

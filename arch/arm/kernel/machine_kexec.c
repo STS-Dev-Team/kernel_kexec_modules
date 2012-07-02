@@ -202,16 +202,16 @@ static void __soft_restart(void *addr)
 	/* Clean and invalidate caches */
 	flush_cache_all();
 
-	while(((*(volatile u32*)(UART3_BASE+UART_LSR))&UART_LSR_THRE)==0)
-	{}
-	*(volatile u32*)(UART3_BASE+UART_THR)='C';
+//	while(((*(volatile u32*)(UART3_BASE+UART_LSR))&UART_LSR_THRE)==0)
+//	{}
+//	*(volatile u32*)(UART3_BASE+UART_THR)='C';
 
 	/* Turn off caching */
 	kexec_cpu_proc_fin();
 
-	while(((*(volatile u32*)(UART3_BASE+UART_LSR))&UART_LSR_THRE)==0)
-	{}
-	*(volatile u32*)(UART3_BASE+UART_THR)='D';
+//	while(((*(volatile u32*)(UART3_BASE+UART_LSR))&UART_LSR_THRE)==0)
+//	{}
+//	*(volatile u32*)(UART3_BASE+UART_THR)='D';
 
 
 	/* Push out any further dirty data, and ensure cache is empty */
@@ -262,6 +262,7 @@ static inline void kexec_l2x0_inv_all(void)
          * not be available to us, so avoid taking any locks.
          * Don't do spin_lock_irqsave(&l2x0_lock, flags);
          */
+		BUG_ON(readl(myL2CacheBase + L2X0_CTRL) & 1);
         writel_relaxed(kexec_l2x0_way_mask, myL2CacheBase + L2X0_INV_WAY);
         kexec_cache_wait_way(myL2CacheBase + L2X0_INV_WAY, kexec_l2x0_way_mask);
         kexec_cache_sync_always();
@@ -276,12 +277,45 @@ static inline void kexec_l2x0_flush_all(void)
 	kexec_cache_sync_always();
 }
 
+static inline void invalidate_icache_all(void)
+{
+#ifdef CONFIG_ARM_ERRATA_411920
+	extern void v6_icache_inval_all(void);
+	v6_icache_inval_all();
+#elif defined(CONFIG_SMP) && __LINUX_ARM_ARCH__ >= 7
+
+	asm volatile ("mcr p15, 0, %0, c7, c5, 0" : : "r" (0));
+
+	/* Invalidate entire branch predictor array */
+
+	asm volatile ("mcr p15, 0, %0, c7, c5, 6" : : "r" (0));
+
+#else
+	asm("mcr	p15, 0, %0, c7, c5, 0	@ invalidate I-cache\n"
+	    :
+	    : "r" (0));
+#endif
+}
+
+static inline void invalidate_foo_all(void)
+{
+
+	asm volatile ("mcr p15, 0, %0, c7, c5, 0" : : "r" (0));
+
+	/* Invalidate entire branch predictor array */
+
+	asm volatile ("mcr p15, 0, %0, c7, c5, 6" : : "r" (0));
+
+	
+}
+
 void soft_restart(unsigned long addr)
 {
 	u32 *stack = (u32 *)(soft_restart_stack + ARRAY_SIZE(soft_restart_stack));
 	unsigned long flags;
 	kex_setup_mm_for_reboot = (void *)kallsyms_lookup_name("setup_mm_for_reboot");
 
+	//Invalidate flush and disable l1
 
 
 	printascii("L2X0 Access\n");
@@ -357,27 +391,6 @@ void setwayflush(void)
 }
 
 
-
-static inline void flush_icache_all(void)
-{
-#ifdef CONFIG_ARM_ERRATA_411920
-	extern void v6_icache_inval_all(void);
-	v6_icache_inval_all();
-#elif defined(CONFIG_SMP) && __LINUX_ARM_ARCH__ >= 7
-
-	asm volatile ("mcr p15, 0, %0, c7, c5, 0" : : "r" (0));
-
-	/* Invalidate entire branch predictor array */
-
-	asm volatile ("mcr p15, 0, %0, c7, c5, 6" : : "r" (0));
-
-#else
-	asm("mcr	p15, 0, %0, c7, c5, 0	@ invalidate I-cache\n"
-	    :
-	    : "r" (0));
-#endif
-}
-
 void machine_kexec(struct kimage *image)
 {
 	unsigned long page_list;
@@ -421,7 +434,7 @@ void machine_kexec(struct kimage *image)
 	memcpy(reboot_code_buffer, relocate_new_kernel, relocate_new_kernel_size);
 
 	printascii("Flush Icache\n");
-	flush_icache_all();
+	invalidate_icache_all();
 
 	soft_restart(reboot_code_buffer_phys);
 }
