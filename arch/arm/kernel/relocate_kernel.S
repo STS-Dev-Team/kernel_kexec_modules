@@ -161,8 +161,9 @@ relocate_new_kernel:
 	ldr r1,kexec_mach_type
 	ldr r2,kexec_boot_atags
 
-//#if 0
+#if 0
 
+//OMAP4430_CM2_BASE
 	movw	r3, #:lower16:0x4a008920
 	movt	r3, #:upper16:0x4a008920
 	movw	r4, #:lower16:0x00070000
@@ -192,6 +193,7 @@ relocate_new_kernel:
 	movt	r4, #:upper16:0x00000103
 	str	r4, [r3]
 
+//OMAP4430_CM1_BASE ()
 	movw	r3, #:lower16:0x4a004420
 	movt	r3, #:upper16:0x4a004420
 	movw	r4, #:lower16:0x00070000
@@ -288,6 +290,7 @@ relocate_new_kernel:
 	movt	r4, #:upper16:0x00030000
 	str	r4, [r3]
 
+//OMAP4430_CM2_BASE
 	movw	r3, #:lower16:0x4a009400
 	movt	r3, #:upper16:0x4a009400
 	movw	r4, #:lower16:0x004c8103
@@ -523,11 +526,13 @@ relocate_new_kernel:
 	movw	r4, #:lower16:0x00000001
 	str	r4, [r3]
 
+//OMAP4430_PRM_BASE
 	movw	r3, #:lower16:0x4a307830
 	movt	r3, #:upper16:0x4a307830
 	movw	r4, #:lower16:0x00000002
 	str	r4, [r3]
 
+//OMAP4430_CM2_BASE
 	movw	r3, #:lower16:0x4a009000
 	movt	r3, #:upper16:0x4a009000
 	movw	r4, #:lower16:0x00000003
@@ -1339,7 +1344,7 @@ relocate_new_kernel:
 	movt	r4, #:upper16:0x00000001
 	str	r4, [r3]
 
-//#endif
+#endif
 	mov pc,lr
 
 	.align
