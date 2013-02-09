@@ -275,8 +275,8 @@ void die(const char *str, struct pt_regs *regs, int err)
 	bust_spinlocks(1);
 	ret = __die(str, err, thread, regs);
 
-	if (regs && kexec_should_crash(thread->task))
-		crash_kexec(regs);
+//	if (regs && kexec_should_crash(thread->task))
+//		crash_kexec(regs);
 
 	bust_spinlocks(0);
 	add_taint(TAINT_DIE);

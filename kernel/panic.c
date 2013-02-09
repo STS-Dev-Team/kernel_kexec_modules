@@ -92,7 +92,7 @@ NORET_TYPE void panic(const char * fmt, ...)
 	 * everything else.
 	 * Do we want to call this before we try to display a message?
 	 */
-	crash_kexec(NULL);
+//	crash_kexec(NULL);
 
 	kmsg_dump(KMSG_DUMP_PANIC);
 
